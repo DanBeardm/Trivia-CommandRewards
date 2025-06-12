@@ -11,14 +11,16 @@ public class Reward {
     public String itemDisplayName;
     public Integer quantity;
     public ItemStack itemStack;
+    public String command;
 
-    public Reward(String itemName, String itemDisplayName, Integer quantity) {
+    public Reward(String itemName, String itemDisplayName, Integer quantity, String command) {
         this.itemName = itemName;
         this.itemDisplayName = itemDisplayName;
         this.quantity = quantity;
         this.itemStack = getItemStack(itemName);
+        this.command = command;
 
-        Trivia.LOGGER.info("Reward item: " + itemDisplayName + " - itemName : " + itemName + " ItemStack: " + itemStack.toString());
+        Trivia.LOGGER.info("Reward item: " + itemDisplayName + " - itemName : " + itemName + " ItemStack: " + itemStack.toString() + " command: " + command);
     }
 
     // take the itemName and return an ItemStack

@@ -3,6 +3,7 @@ package dev.roanoke.trivia.Reward;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import dev.roanoke.trivia.Trivia;
 import dev.roanoke.trivia.Quiz.Question;
@@ -29,9 +30,13 @@ public class RewardManager {
                 String itemName = rewardObj.get("item_name").getAsString();
                 String itemDisplayName = rewardObj.get("display_name").getAsString();
                 Integer quantity = rewardObj.get("quantity").getAsInt();
+                String command = "";
+                if (rewardObj.has("command")) {
+                    command = rewardObj.get("command").getAsString();
+                }
 
                 // Create the TriviaQuestion object and add it to the list
-                Reward reward = new Reward(itemName, itemDisplayName, quantity);
+                Reward reward = new Reward(itemName, itemDisplayName, quantity, command);
                 if (reward.itemStack == null) {
                     continue;
                 }
@@ -57,7 +62,14 @@ public class RewardManager {
             ArrayList<Reward> rewards = rewardPools.get(question.difficulty);
             Reward reward = rewards.get((int) (Math.random() * rewards.size()));
 
-            if (!player.giveItemStack(reward.itemStack.copy())) {
+            if (!reward.command.isEmpty()) {
+                MinecraftServer server = player.getServer();
+                String cmd = reward.command.replace("@p", player.getName().getString());
+                if (server != null) {
+                    server.getCommandManager().executeWithPrefix(server.getCommandSource(), cmd);
+                }
+            }
+            else if (!player.giveItemStack(reward.itemStack.copy())) {
                 player.dropItem(reward.itemStack.copy(), false);
             }
 
