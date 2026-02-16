@@ -6,7 +6,7 @@
       "command": "deposit 40 dollars %player%" 
     }
 '''  
-<h3>Item + command together (both give)
+<h3>Item + command together (both give)</h3>
 '''
   {
     "item_name": "cobblemon:rare_candy",
