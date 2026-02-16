@@ -76,7 +76,7 @@ tasks.named("remapJar") {
     // server/upload jar name:
     // - set to "" to get <name>-<version>.jar
     // - or set to "server" to get <name>-<version>-server.jar (less confusing)
-    archiveClassifier.set("server")
+    archiveClassifier.set("CommandRewards")
 }
 
 publishing {

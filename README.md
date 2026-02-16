@@ -1,4 +1,21 @@
-<h1>Trivia - A Fabric 1.19.2 Question & Reward Plugin</h1>
+<h1>Command Reward Example</h1>
+<h3>Command-only Reward</h2>
+'''
+    { 
+      "display_name": "40 Dollars", 
+      "command": "deposit 40 dollars %player%" 
+    }
+'''  
+<h3>Item + command together (both give)
+'''
+  {
+    "item_name": "cobblemon:rare_candy",
+    "display_name": "Rare Candy + Bonus",
+    "quantity": 1,
+    "command": "deposit 10 dollars %player%"
+  }
+'''
+<h1>Trivia - A Fabric 1.21.1 Question & Reward Fabric Mod</h1>
 
 <h3>Originally created for the Roanoke Cobblemon Server to make Cobblemon items more obtainable</h2>
 
