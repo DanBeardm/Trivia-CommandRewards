@@ -1,6 +1,7 @@
 package dev.roanoke.trivia.Quiz;
 
 import java.util.List;
+import java.util.Locale;
 
 // contains a question string, a list of possible answers, and a function to check if its the correct answer
 public class Question {
@@ -14,6 +15,10 @@ public class Question {
         this.answers = answers;
         this.difficulty = difficulty;
         // PokeTrivia.LOGGER.info("Loaded question: " + question);
+        this.answers = answers.stream()
+                .map(a -> a.toLowerCase(Locale.ROOT).trim())
+                .distinct()
+                .toList();
     }
 
 }

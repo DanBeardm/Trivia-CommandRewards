@@ -1,5 +1,6 @@
 package dev.roanoke.trivia;
 
+import dev.roanoke.trivia.Quiz.*;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -8,10 +9,11 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.kyori.adventure.platform.fabric.FabricServerAudiences;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import dev.roanoke.trivia.Commands.QuizCommands;
-import dev.roanoke.trivia.Quiz.QuizManager;
 import dev.roanoke.trivia.Utils.Messages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class Trivia implements ModInitializer {
     /**
@@ -37,27 +39,46 @@ public class Trivia implements ModInitializer {
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             adventure = FabricServerAudiences.of(server);
+
+            // dex entries (your separate class)
+            quiz.addQuestions(CobblemonDexEntryQuestions.generate(server, 800));
+
+            // types (primary + secondary) and whatever else is in CobblemonAutoQuestions
+            quiz.addQuestions(CobblemonAutoQuestions.generate(server, 600));
         });
 
         ServerTickEvents.START_SERVER_TICK.register(server -> {
-            if (!quiz.quizInProgress() && (server.getPlayerManager().getPlayerList().size() > 0)) {
+
+            // If nobody is online, do nothing (don't tick interval or timeout)
+            if (server.getPlayerManager().getPlayerList().isEmpty()) {
+                return;
+            }
+
+            // No quiz running -> tick the interval timer only
+            if (!quiz.quizInProgress()) {
                 if (quizIntervalCounter >= config.getQuizInterval()) {
                     quizIntervalCounter = 0;
+
+                    // IMPORTANT: reset timeout counter when starting a quiz
+                    quizTimeOutCounter = 0;
+
                     quiz.startQuiz(server);
                 } else {
                     quizIntervalCounter++;
                 }
-            } else {
-                if (quizTimeOutCounter >= config.getQuizTimeOut()) {
-                    quizTimeOutCounter = 0;
-                    quizIntervalCounter = 0;
-                    quiz.timeOutQuiz(server); // move timeout message to this function later
-                } else {
-                    quizTimeOutCounter++;
-                }
+                return;
+            }
 
+            // Quiz running -> tick the timeout timer only
+            if (quizTimeOutCounter >= config.getQuizTimeOut()) {
+                quizTimeOutCounter = 0;
+                quizIntervalCounter = 0;
+                quiz.timeOutQuiz(server);
+            } else {
+                quizTimeOutCounter++;
             }
         });
+
 
         ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
             if (quiz.quizInProgress()) {

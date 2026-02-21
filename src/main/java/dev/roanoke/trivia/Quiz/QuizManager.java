@@ -211,4 +211,9 @@ public class QuizManager {
         this.currentQuestion = null;
     }
 
+    public void addQuestions(List<Question> questions) {
+        if (questions == null || questions.isEmpty()) return;
+        questionPool.addAll(questions);
+        Trivia.LOGGER.info("Added {} auto-generated questions. Total pool now {}.", questions.size(), questionPool.size());
+    }
 }
