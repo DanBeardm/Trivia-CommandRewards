@@ -37,6 +37,8 @@ public final class CobblemonAutoQuestions {
         List<Question> easy = new ArrayList<>();
         List<Question> medium = new ArrayList<>();
         List<Question> hard = new ArrayList<>();
+        Map<Integer, LinkedHashSet<String>> dexToAnswers = new HashMap<>();
+        Map<String, LinkedHashSet<String>> evolvesIntoAnswers = new HashMap<>();
 
         for (var entry : speciesFiles.entrySet()) {
             Identifier id = entry.getKey();
@@ -90,47 +92,132 @@ public final class CobblemonAutoQuestions {
                 ));
             }
 
-            // --- MEDIUM: national dex number
+            // --- MEDIUM: national dex number (forward)
             if (obj.has("nationalPokedexNumber")) {
-                String dexNum = String.valueOf(obj.get("nationalPokedexNumber").getAsInt());
+                int dexInt = obj.get("nationalPokedexNumber").getAsInt();
+                String dexNum = String.valueOf(dexInt);
+
+                // forward question (keep if you want)
                 medium.add(new Question(
                         "What is the National Pokedex number of " + displayName + "?",
-                        List.of(dexNum),
-                        "medium"
+                        List.of(dexNum, "#" + dexNum),
+                        "hard"
                 ));
+
+                // reverse mapping (number -> pokemon)
+                String idAns = speciesId.toLowerCase(Locale.ROOT).trim();
+                String nameAns = displayName.toLowerCase(Locale.ROOT).trim();
+
+                LinkedHashSet<String> set = dexToAnswers.computeIfAbsent(dexInt, k -> new LinkedHashSet<>());
+
+                // add name first (prettier), then id (fallback)
+                set.add(nameAns);
+                if (!idAns.equals(nameAns)) {
+                    set.add(idAns);
+                }
             }
 
-            // --- HARD: ability (accept any valid ability)
+            // --- MEDIUM: ability (accept any valid ability)
             if (obj.has("abilities") && obj.get("abilities").isJsonArray()) {
-                List<String> abilities = new ArrayList<>();
+                LinkedHashSet<String> abilities = new LinkedHashSet<>();
+
                 for (JsonElement a : obj.getAsJsonArray("abilities")) {
-                    if (a.isJsonPrimitive()) {
-                        abilities.add(a.getAsString().toLowerCase(Locale.ROOT));
-                    }
+                    if (!a.isJsonPrimitive()) continue;
+
+                    String raw = a.getAsString().trim().toLowerCase(Locale.ROOT);
+
+                    // remove hidden prefix "h:"
+                    if (raw.startsWith("h:")) raw = raw.substring(2).trim();
+
+                    if (raw.isBlank()) continue;
+
+                    // Accept both "speedboost" and "speed boost"
+                    abilities.add(raw);
+                    abilities.add(splitCamelOrCompactAbility(raw));
                 }
+
+                // remove empty / duplicates
+                abilities.removeIf(s -> s == null || s.isBlank());
+
                 if (!abilities.isEmpty()) {
                     hard.add(new Question(
                             "Name an ability that " + displayName + " can have.",
-                            abilities,
-                            "hard"
+                            new ArrayList<>(abilities),
+                            "medium"
                     ));
                 }
             }
 
-            // --- HARD: dex entry (prefer lang desc; fallback to species json "pokedex" if you want)
-            String dexEntry = lang.descById.get(speciesId);
-            if (dexEntry == null || dexEntry.isBlank()) {
-                dexEntry = extractPokedexFromSpeciesJson(obj); // optional fallback
+            // --- MEDIUM: egg group (accept any listed egg group)
+            if (obj.has("eggGroups") && obj.get("eggGroups").isJsonArray()) {
+                List<String> eggGroups = new ArrayList<>();
+                for (JsonElement e : obj.getAsJsonArray("eggGroups")) {
+                    if (e.isJsonPrimitive()) {
+                        eggGroups.add(e.getAsString().toLowerCase(Locale.ROOT));
+                    }
+                }
+
+                if (!eggGroups.isEmpty()) {
+                    medium.add(new Question(
+                            "Name an egg group that " + displayName + " belongs to.",
+                            eggGroups,
+                            "medium"
+                    ));
+                }
             }
-            if (dexEntry != null && !dexEntry.isBlank()) {
-                hard.add(new Question(
-                        "Whos Dex Entry is this: " + dexEntry,
-                        List.of(displayName.toLowerCase(Locale.ROOT)),
-                        "hard"
-                ));
+            // --- EASY: pre-evolution (forward) + inverse map
+            if (obj.has("preEvolution") && obj.get("preEvolution").isJsonPrimitive()) {
+                String preIdRaw = obj.get("preEvolution").getAsString().trim().toLowerCase(Locale.ROOT);
+                if (!preIdRaw.isBlank()) {
+
+                    // e.g. "cobblemon:pichu" -> "pichu"
+                    String preId = preIdRaw.contains(":") ? preIdRaw.substring(preIdRaw.indexOf(':') + 1) : preIdRaw;
+
+                    String preName = lang.nameById.getOrDefault(preId, preId);
+
+                    // Forward question: "What does X evolve from?"
+                    LinkedHashSet<String> fromAnswers = new LinkedHashSet<>();
+                    fromAnswers.add(preName.toLowerCase(Locale.ROOT));
+                    fromAnswers.add(preId.toLowerCase(Locale.ROOT));
+
+                    medium.add(new Question(
+                            "What does " + displayName + " evolve from?",
+                            new ArrayList<>(fromAnswers),
+                            "easy"
+                    ));
+
+                    // Inverse mapping: preId -> this species (collapse forms)
+                    String evoId = speciesId.split("-", 2)[0].toLowerCase(Locale.ROOT);
+                    String evoName = lang.nameById.getOrDefault(evoId, evoId);
+
+                    LinkedHashSet<String> intoSet = evolvesIntoAnswers.computeIfAbsent(preId, k -> new LinkedHashSet<>());
+                    intoSet.add(evoName.toLowerCase(Locale.ROOT));
+                    intoSet.add(evoId.toLowerCase(Locale.ROOT));
+                }
             }
         }
+        // --- MEDIUM: national dex number (reverse)
+        for (var e : dexToAnswers.entrySet()) {
+            int dexInt = e.getKey();
+            String dexNum = String.valueOf(dexInt);
 
+            medium.add(new Question(
+                    "What pokemon has the National Pokedex number of #" + dexNum + "?",
+                    new ArrayList<>(e.getValue()),
+                    "hard"
+            ));
+        }
+        // --- EASY: inverse evolution question (pre-evo -> evolves into)
+        for (var e : evolvesIntoAnswers.entrySet()) {
+            String preId = e.getKey(); // e.g. "pichu"
+            String preName = lang.nameById.getOrDefault(preId, preId);
+
+            medium.add(new Question(
+                    "What does " + preName + " evolve into?",
+                    new ArrayList<>(e.getValue()),
+                    "easy"
+            ));
+        }
         // Shuffle and cap so you don’t accidentally add 10k questions
         Collections.shuffle(easy);
         Collections.shuffle(medium);
@@ -151,6 +238,24 @@ public final class CobblemonAutoQuestions {
                 easy.size(), medium.size(), hard.size(), out.size());
 
         return out;
+    }
+    private static String splitCamelOrCompactAbility(String ability) {
+        // If it's already got spaces/underscores, normalise to spaces
+        String s = ability.replace('_', ' ').trim();
+        if (s.contains(" ")) return s;
+
+        // Heuristic: insert a space before common suffixes/patterns if it looks like a glued phrase.
+        // Minimal + safe: split on known "boost" style words etc won't generalise perfectly,
+        // so we also do a generic "vowel-consonant" split fallback is too risky.
+        // Best simple rule: split before "boost", "power", "guard", "body", "force", "skin", "proof", "surge", "stream"
+        String[] tokens = {"boost","power","guard","body","force","skin","proof","surge","stream","aura","armor","cloak","dance","pull","veil","heart","hand","foot","jaw","pelt","shell","bounce","burst","drive","zone"};
+        for (String t : tokens) {
+            int idx = s.indexOf(t);
+            if (idx > 0 && idx < s.length()) {
+                return s.substring(0, idx) + " " + s.substring(idx);
+            }
+        }
+        return s; // if we can't confidently split, just return original
     }
 
     private static String filenameNoExt(String path) {

@@ -158,12 +158,26 @@ public class QuizManager {
     }
 
     public Boolean isRightAnswer(String guess) {
-        for (String answer: currentQuestion.answers) {
-            if (answer.equalsIgnoreCase(guess)) {
+        String g = normalizeAnswer(guess);
+
+        for (String answer : currentQuestion.answers) {
+            if (normalizeAnswer(answer).equals(g)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static String normalizeAnswer(String s) {
+        if (s == null) return "";
+        s = s.toLowerCase(java.util.Locale.ROOT).trim();
+
+        // strip hidden-ability prefix if present
+        if (s.startsWith("h:")) s = s.substring(2).trim();
+
+        // make "speed boost", "speed_boost", "speed-boost" all match "speedboost"
+        // also handles accents/punctuation in general
+        return s.replaceAll("[^a-z0-9]", "");
     }
 
     public void startQuiz(MinecraftServer server) {

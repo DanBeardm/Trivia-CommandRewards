@@ -42,6 +42,7 @@ public class Trivia implements ModInitializer {
 
             // dex entries (your separate class)
             quiz.addQuestions(CobblemonDexEntryQuestions.generate(server, 800));
+            quiz.addQuestions(CobblemonNameScrambleQuestions.generate(server, 500));
 
             // types (primary + secondary) and whatever else is in CobblemonAutoQuestions
             quiz.addQuestions(CobblemonAutoQuestions.generate(server, 600));
