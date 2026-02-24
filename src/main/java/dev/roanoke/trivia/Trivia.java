@@ -40,12 +40,14 @@ public class Trivia implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             adventure = FabricServerAudiences.of(server);
 
-            // dex entries (your separate class)
-            quiz.addQuestions(CobblemonDexEntryQuestions.generate(server, 800));
-            quiz.addQuestions(CobblemonNameScrambleQuestions.generate(server, 500));
-
-            // types (primary + secondary) and whatever else is in CobblemonAutoQuestions
+            // your generators
+            quiz.addQuestions(CobblemonDexEntryQuestions.generate(server, 600));
+            quiz.addQuestions(CobblemonNameScrambleQuestions.generate(server, 600));
             quiz.addQuestions(CobblemonAutoQuestions.generate(server, 600));
+
+            // ✅ make the next tick start a quiz as soon as players are online
+            quizTimeOutCounter = 0;
+            quizIntervalCounter = config.getQuizInterval();
         });
 
         ServerTickEvents.START_SERVER_TICK.register(server -> {

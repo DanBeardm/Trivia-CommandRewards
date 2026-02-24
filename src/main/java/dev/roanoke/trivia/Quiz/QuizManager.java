@@ -10,10 +10,8 @@ import dev.roanoke.trivia.Reward.RewardManager;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.Normalizer;
+import java.util.*;
 
 public class QuizManager {
 
@@ -170,14 +168,31 @@ public class QuizManager {
 
     private static String normalizeAnswer(String s) {
         if (s == null) return "";
-        s = s.toLowerCase(java.util.Locale.ROOT).trim();
+
+        // Normalize weird unicode (full-width chars etc), lowercase, trim
+        s = Normalizer.normalize(s, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT).trim();
 
         // strip hidden-ability prefix if present
         if (s.startsWith("h:")) s = s.substring(2).trim();
 
-        // make "speed boost", "speed_boost", "speed-boost" all match "speedboost"
-        // also handles accents/punctuation in general
-        return s.replaceAll("[^a-z0-9]", "");
+        // Strip accents (Flabébé -> flabebe)
+        s = Normalizer.normalize(s, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+
+        // Turn punctuation/underscores/hyphens into spaces, then split into tokens
+        s = s.replaceAll("[^a-z0-9]+", " ").trim();
+        if (s.isEmpty()) return "";
+
+        String[] parts = s.split("\\s+");
+        List<String> tokens = new ArrayList<>();
+        for (String p : parts) {
+            if (!p.isBlank()) tokens.add(p);
+        }
+
+        // Sort tokens so "yamask galarian" == "galarian yamask"
+        Collections.sort(tokens);
+
+        // Join into a single comparable key
+        return String.join("", tokens);
     }
 
     public void startQuiz(MinecraftServer server) {

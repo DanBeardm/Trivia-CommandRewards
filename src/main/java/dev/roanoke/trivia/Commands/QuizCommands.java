@@ -2,6 +2,9 @@ package dev.roanoke.trivia.Commands;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import dev.roanoke.trivia.Quiz.CobblemonAutoQuestions;
+import dev.roanoke.trivia.Quiz.CobblemonDexEntryQuestions;
+import dev.roanoke.trivia.Quiz.CobblemonNameScrambleQuestions;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
@@ -65,12 +68,22 @@ public class QuizCommands {
     }
 
     private int executeReloadQuiz(CommandContext<ServerCommandSource> ctx) {
-        if (Trivia.getInstance().quiz.quizInProgress()) {
-            Trivia.getInstance().quizIntervalCounter = 0;
-        }
+        var server = ctx.getSource().getServer();
+
+        // Reset timers so we don't instantly timeout / instantly start
+        Trivia.getInstance().quizIntervalCounter = 0;
+        Trivia.getInstance().quizTimeOutCounter = 0;
+
+        // Recreate quiz + reload config
         Trivia.getInstance().quiz = new QuizManager();
         Trivia.getInstance().config = new Config();
         Trivia.messages = new Messages(FabricLoader.getInstance().getConfigDir().resolve("Trivia/messages.json"));
+
+        // Re-add generated Cobblemon questions (same as SERVER_STARTED)
+        Trivia.getInstance().quiz.addQuestions(CobblemonDexEntryQuestions.generate(server, 800));
+        Trivia.getInstance().quiz.addQuestions(CobblemonNameScrambleQuestions.generate(server, 500));
+        Trivia.getInstance().quiz.addQuestions(CobblemonAutoQuestions.generate(server, 600));
+
         return 1;
     }
 

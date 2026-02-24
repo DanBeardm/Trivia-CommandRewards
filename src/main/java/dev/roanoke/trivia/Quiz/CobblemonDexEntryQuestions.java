@@ -32,7 +32,7 @@ public final class CobblemonDexEntryQuestions {
         for (String speciesId : lang.descById.keySet()) {
             String desc = lang.descById.get(speciesId);
             if (desc == null || desc.isBlank()) continue;
-
+            if (isEcologyUnderResearch(desc)) continue;
             // Base id = cut off everything after first '-'
             String fullId = speciesId.toLowerCase(Locale.ROOT);
             String baseId = speciesId.split("-", 2)[0].toLowerCase(Locale.ROOT);
@@ -60,6 +60,7 @@ public final class CobblemonDexEntryQuestions {
                     answers,
                     "hard"
             ));
+
         }
 
         Collections.shuffle(out);
@@ -69,6 +70,23 @@ public final class CobblemonDexEntryQuestions {
 
         Trivia.LOGGER.info("[Trivia] Generated {} Cobblemon dex-entry questions.", out.size());
         return out;
+    }
+
+    private static boolean isEcologyUnderResearch(String desc) {
+        if (desc == null) return true;
+
+        // Convert full-width characters to normal ASCII, normalize punctuation, etc.
+        String s = Normalizer.normalize(desc, Normalizer.Form.NFKC)
+                .toLowerCase(Locale.ROOT)
+                .trim();
+
+        // collapse whitespace
+        s = s.replaceAll("\\s+", " ");
+
+        // remove punctuation so "research." matches too
+        s = s.replaceAll("[^a-z0-9 ]", "");
+
+        return s.contains("ecology under research");
     }
 
     private static String maskNameVariants(String desc, String baseName, String baseId) {
